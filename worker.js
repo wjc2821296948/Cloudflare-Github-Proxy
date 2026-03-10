@@ -1,24 +1,30 @@
-// 域名映射配置
-const domain_mappings = {
-  'github.com': 'gh.',
-  'avatars.githubusercontent.com': 'avatars-githubusercontent-com-',
-  'github.githubassets.com': 'github-githubassets-com-',
-  'collector.github.com': 'collector-github-com-',
-  'api.github.com': 'api-github-com-',
-  'raw.githubusercontent.com': 'raw-githubusercontent-com-',
-  'gist.githubusercontent.com': 'gist-githubusercontent-com-',
-  'github.io': 'github-io-',
-  'assets-cdn.github.com': 'assets-cdn-github-com-',
-  'cdn.jsdelivr.net': 'cdn.jsdelivr-net-',
-  'securitylab.github.com': 'securitylab-github-com-',
-  'www.githubstatus.com': 'www-githubstatus-com-',
-  'npmjs.com': 'npmjs-com-',
-  'git-lfs.github.com': 'git-lfs-github-com-',
-  'githubusercontent.com': 'githubusercontent-com-',
-  'github.global.ssl.fastly.net': 'github-global-ssl-fastly-net-',
-  'api.npms.io': 'api-npms-io-',
-  'github.community': 'github-community-'
-};
+// 域名白名单配置（仅保留需要的原生域名）
+const domain_whitelist = [
+  'github.com',
+  'avatars.githubusercontent.com',
+  'github.githubassets.com',
+  'collector.github.com',
+  'api.github.com',
+  'raw.githubusercontent.com',
+  'gist.githubusercontent.com',
+  'github.io',
+  'assets-cdn.github.com',
+  'cdn.jsdelivr.net',
+  'securitylab.github.com',
+  'www.githubstatus.com',
+  'npmjs.com',
+  'git-lfs.github.com',
+  'githubusercontent.com',
+  'github.global.ssl.fastly.net',
+  'api.npms.io',
+  'github.community'
+];
+
+// 由白名单自动生成映射
+const domain_mappings = Object.fromEntries(
+  domain_whitelist.map(domain => [domain, domain.replace(/\./g, '-') + '-'])
+);
+
 
 // 需要重定向的路径
 const redirect_paths = ['/', '/login', '/signup', '/copilot', '/search/custom_scopes', '/session'];
@@ -34,9 +40,9 @@ async function handleRequest(request) {
   const host_header = request.headers.get('Host');
   const effective_host = (host_header || current_host).toLowerCase();
   
-  // 检查特殊路径重定向
+  // 检查特殊路径，返回正常错误
   if (redirect_paths.includes(url.pathname)) {
-    return Response.redirect('https://www.gov.cn', 302);
+    return new Response('Not Found', { status: 404 });
   }
 
   // 强制使用 HTTPS
@@ -68,12 +74,7 @@ async function handleRequest(request) {
   }
 
   if (!target_host) {
-    // 再次检查 github.com 的情况，防止漏网
-    if (host_prefix === 'gh.') {
-        target_host = 'github.com';
-    } else {
-        return new Response(`Domain not configured for proxy. Host: ${effective_host}, Prefix: ${host_prefix}, Target lookup failed`, { status: 404 });
-    }
+    return new Response(`Domain not configured for proxy. Host: ${effective_host}, Prefix: ${host_prefix}, Target lookup failed`, { status: 404 });
   }
 
   // 直接使用正则表达式处理最常见的嵌套URL问题
@@ -131,17 +132,12 @@ async function handleRequest(request) {
 
 // 获取当前主机名的前缀，用于匹配反向映射
 function getProxyPrefix(host) {
-  // 检查是否正好是 gh. 开头（对应 github.com）
-  if (host.startsWith('gh.')) {
-    return 'gh.';
-  }
-
   // 检查 *-gh. 模式
   const ghMatch = host.match(/^([a-z0-9-]+-gh\.)/);
   if (ghMatch) {
     return ghMatch[1];
   }
-  
+
   return null;
 }
 
@@ -162,19 +158,8 @@ async function modifyResponse(response, host_prefix, effective_hostname) {
   for (const [original_domain, _] of Object.entries(domain_mappings)) {
     const escaped_domain = original_domain.replace(/\./g, '\\.');
     
-    // 强制把所有域名的前缀都改成 *-gh. 格式
-    let current_prefix = original_domain.replace(/\./g, '-') + '-gh.';
-    
-    // 特殊处理 github.com
-    if (original_domain === 'github.com') {
-      current_prefix = 'gh.';
-    }
-    
-    // 移除可能已经存在的重复后缀
-    // 如果 domain_suffix 已经包含了 host_prefix 对应的部分，这会导致重复
-    // 正确的逻辑是：domain_suffix 应该是去掉 host_prefix 后的部分，这在上面已经计算了
-    // 但是，如果 host_prefix 提取有误，或者 effective_hostname 结构不符合预期，可能会出问题
-    
+    // 统一为 [原生域名]-gh.072103.xyz
+    const current_prefix = original_domain.replace(/\./g, '-') + '-gh.';
     const full_proxy_domain = `${current_prefix}${domain_suffix}`;
     
     // 替换完整URLs
