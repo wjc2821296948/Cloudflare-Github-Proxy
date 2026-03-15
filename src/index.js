@@ -17,7 +17,9 @@ const domain_whitelist = [
   'githubusercontent.com',
   'github.global.ssl.fastly.net',
   'api.npms.io',
-  'github.community'
+  'github.community',
+  'desktop.github.com',
+  'central.github.com'
 ];
 
 // 由白名单自动生成映射
