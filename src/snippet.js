@@ -19,7 +19,8 @@ const domain_whitelist = [
   'api.npms.io',
   'github.community',
   'desktop.github.com',
-  'central.github.com'
+  'central.github.com',
+  'release-assets.githubusercontent.com'
 ];
 
 // 由白名单自动生成映射
