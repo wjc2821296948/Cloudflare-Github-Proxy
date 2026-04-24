@@ -5,3 +5,8 @@ compatibility_date = "2024-04-06"
 [[routes]]
 pattern = "*-gh.lrate.top/*"
 zone_name = "lrate.top"
+
+[observability]
+[observability.logs]
+enabled = true
+invocation_logs = true
